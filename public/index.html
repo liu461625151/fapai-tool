@@ -827,9 +827,6 @@ async function fetchData() {
     
     applyFilters();
     showToast(`成功获取 ${state.allItems.length} 条真实数据`, 'success');
-    } else {
-      showToast('获取数据失败: ' + json.error, 'error');
-    }
   } catch (e) {
     showToast('获取数据失败: ' + e.message, 'error');
   } finally {
