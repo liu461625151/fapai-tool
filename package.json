@@ -1,0 +1,16 @@
+{
+  "name": "auction-house-tool",
+  "version": "1.0.0",
+  "description": "法拍房信息查询工具 - 实时获取阿里拍卖数据",
+  "main": "api/search.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "node local-server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

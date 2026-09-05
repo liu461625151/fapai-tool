@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>法拍房信息查询工具 - 阿里拍卖真实数据</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<style>
+:root {
+  --primary: #1e3a5f;
+  --primary-light: #2c5282;
+  --primary-dark: #152a45;
+  --accent: #c9a96e;
+  --accent-light: #dcc089;
+  --bg: #f8f6f1;
+  --bg-card: #ffffff;
+  --text: #2d3436;
+  --text-secondary: #636e72;
+  --text-muted: #b2bec3;
+  --border: #dfe6e9;
+  --border-light: #ecf0f1;
+  --success: #27ae60;
+  --warning: #e67e22;
+  --danger: #e74c3c;
+  --info: #3498db;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-width: 1200px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.header {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+  color: #fff;
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 3px solid var(--accent);
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-icon {
+  width: 44px; height: 44px;
+  background: rgba(201, 169, 110, 0.2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+}
+.header-icon svg { width: 24px; height: 24px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+.header h1 { font-family: 'Noto Serif SC', serif; font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+.header-subtitle { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.header-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff; padding: 8px 16px; border-radius: var(--radius);
+  cursor: pointer; font-size: 13px; transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px; font-family: inherit;
+}
+.header-btn:hover { background: rgba(255,255,255,0.2); border-color: var(--accent); }
+.header-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.header-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.data-source-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(39, 174, 96, 0.2); border: 1px solid var(--success);
+  color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 11px;
+}
+.data-source-badge .dot { width: 6px; height: 6px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.main { padding: 24px 32px 40px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--bg-card); border-radius: var(--radius-lg);
+  padding: 18px 20px; box-shadow: var(--shadow-sm);
+  border-left: 3px solid var(--primary); position: relative; overflow: hidden;
+}
+.stat-card.success { border-left-color: var(--success); }
+.stat-card.warning { border-left-color: var(--warning); }
+.stat-card.accent { border-left-color: var(--accent); }
+.stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.stat-value { font-family: 'Noto Serif SC', serif; font-size: 28px; font-weight: 700; color: var(--primary); line-height: 1.2; }
+.stat-card.success .stat-value { color: var(--success); }
+.stat-card.warning .stat-value { color: var(--warning); }
+.stat-card.accent .stat-value { color: var(--accent); }
+.stat-unit { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-left: 4px; }
+.filter-panel {
+  background: var(--bg-card); border-radius: var(--radius-lg);
+  padding: 20px 24px; box-shadow: var(--shadow-sm); margin-bottom: 16px;
+}
+.filter-title {
+  font-size: 13px; font-weight: 500; color: var(--primary);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border-light);
+}
+.filter-title svg { width: 16px; height: 16px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+.filter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 14px; }
+.filter-item { display: flex; flex-direction: column; gap: 6px; }
+.filter-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.filter-select, .filter-input {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 13px; color: var(--text);
+  background: #fff; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit;
+}
+.filter-select:focus, .filter-input:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+.filter-select:disabled { background: var(--border-light); color: var(--text-muted); cursor: not-allowed; }
+.time-quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.time-quick-btn {
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: #fff; font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.time-quick-btn:hover { border-color: var(--primary-light); color: var(--primary); }
+.time-quick-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.time-custom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.time-custom input[type="date"] {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 12px; font-family: inherit; color: var(--text);
+}
+.time-sep { color: var(--text-muted); font-size: 12px; }
+.status-tabs { display: flex; gap: 4px; background: var(--border-light); padding: 3px; border-radius: var(--radius); }
+.status-tab {
+  flex: 1; padding: 6px 8px; border: none; background: transparent;
+  font-size: 12px; color: var(--text-secondary); cursor: pointer;
+  border-radius: 4px; transition: all 0.2s; font-family: inherit; white-space: nowrap;
+}
+.status-tab:hover { color: var(--primary); }
+.status-tab.active { background: #fff; color: var(--primary); font-weight: 500; box-shadow: var(--shadow-sm); }
+.filter-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 14px; border-top: 1px solid var(--border-light);
+}
+.filter-actions-left { display: flex; align-items: center; gap: 12px; }
+.load-status { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.load-status .spinner {
+  width: 14px; height: 14px; border: 2px solid var(--border);
+  border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn {
+  padding: 8px 20px; border-radius: var(--radius); font-size: 13px;
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent;
+}
+.btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-light); border-color: var(--primary-light); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-outline { background: #fff; color: var(--text-secondary); border-color: var(--border); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-accent:hover { background: var(--accent-light); border-color: var(--accent-light); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.table-toolbar {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+}
+.toolbar-left { display: flex; align-items: center; gap: 12px; }
+.result-count { font-size: 13px; color: var(--text-secondary); }
+.result-count strong { color: var(--primary); font-size: 16px; font-weight: 700; margin: 0 2px; }
+.current-filter-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(30, 58, 95, 0.08); color: var(--primary);
+  padding: 3px 10px; border-radius: 12px; font-size: 12px;
+}
+.toolbar-right { display: flex; gap: 8px; }
+.table-container { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.table-wrapper { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table thead { background: var(--primary); color: #fff; }
+.data-table th {
+  padding: 12px 14px; text-align: left; font-weight: 500; font-size: 12px;
+  letter-spacing: 0.3px; white-space: nowrap; cursor: pointer; user-select: none;
+  position: relative; border-right: 1px solid rgba(255,255,255,0.1);
+}
+.data-table th:last-child { border-right: none; }
+.data-table th:hover { background: var(--primary-light); }
+.th-content { display: flex; align-items: center; gap: 4px; }
+.sort-icon { display: inline-flex; flex-direction: column; gap: 1px; opacity: 0.5; }
+.sort-icon span { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; }
+.sort-icon span:first-child { border-bottom: 4px solid #fff; }
+.sort-icon span:last-child { border-top: 4px solid #fff; }
+th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; }
+th.sort-asc .sort-icon span:last-child { opacity: 0.3; }
+th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
+.data-table tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.15s; }
+.data-table tbody tr:hover { background: rgba(30, 58, 95, 0.03); }
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table td { padding: 11px 14px; vertical-align: middle; border-right: 1px solid var(--border-light); }
+.data-table td:last-child { border-right: none; }
+.col-index { width: 50px; text-align: center; color: var(--text-muted); font-size: 12px; }
+.col-time { min-width: 130px; font-weight: 500; color: var(--primary); }
+.col-time .date { font-size: 13px; }
+.col-time .time { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+.col-title { min-width: 220px; max-width: 320px; }
+.property-name { font-weight: 500; color: var(--text); margin-bottom: 2px; line-height: 1.4; }
+.property-court { font-size: 11px; color: var(--text-muted); }
+.property-cat {
+  display: inline-block; font-size: 10px; background: rgba(201, 169, 110, 0.15);
+  color: #9a7b3e; padding: 1px 5px; border-radius: 3px; margin-left: 4px;
+}
+.col-address { min-width: 160px; max-width: 200px; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.col-area { text-align: right; min-width: 80px; font-variant-numeric: tabular-nums; }
+.col-price { text-align: right; min-width: 110px; font-variant-numeric: tabular-nums; }
+.price-start { font-weight: 600; color: var(--danger); font-size: 14px; }
+.price-eval { font-size: 11px; color: var(--text-muted); margin-top: 1px; text-decoration: line-through; }
+.price-discount {
+  display: inline-block; font-size: 10px; background: rgba(231, 76, 60, 0.1);
+  color: var(--danger); padding: 1px 5px; border-radius: 3px; margin-top: 2px;
+}
+.col-deposit { text-align: right; min-width: 90px; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.col-status { min-width: 90px; text-align: center; }
+.status-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 12px;
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.status-badge.active { background: rgba(39, 174, 96, 0.12); color: var(--success); border: 1px solid rgba(39, 174, 96, 0.3); }
+.status-badge.upcoming { background: rgba(230, 126, 34, 0.12); color: var(--warning); border: 1px solid rgba(230, 126, 34, 0.3); }
+.status-badge.ended { background: rgba(178, 190, 195, 0.15); color: var(--text-muted); border: 1px solid rgba(178, 190, 195, 0.4); }
+.col-bids { min-width: 70px; text-align: center; font-size: 12px; color: var(--text-secondary); }
+.col-action { min-width: 100px; text-align: center; }
+.action-link {
+  color: var(--primary); cursor: pointer; font-size: 12px; text-decoration: none;
+  border-bottom: 1px dashed var(--primary); padding-bottom: 1px; margin-right: 8px;
+}
+.action-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.action-link.ext { color: var(--info); border-bottom-color: var(--info); }
+.empty-state { padding: 60px 20px; text-align: center; color: var(--text-muted); }
+.empty-state svg { width: 64px; height: 64px; stroke: var(--border); fill: none; stroke-width: 1; margin-bottom: 16px; }
+.empty-state h3 { font-size: 16px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+.empty-state p { font-size: 13px; }
+.load-more-row { padding: 16px; text-align: center; border-top: 1px solid var(--border-light); }
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-top: 1px solid var(--border-light); background: var(--bg-card);
+}
+.pagination-info { font-size: 12px; color: var(--text-secondary); }
+.pagination-controls { display: flex; align-items: center; gap: 4px; }
+.page-btn {
+  min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--border);
+  background: #fff; border-radius: var(--radius); font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center;
+  z-index: 1000; backdrop-filter: blur(2px);
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  width: 760px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-header {
+  padding: 18px 24px; border-bottom: 1px solid var(--border-light);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--primary); color: #fff;
+}
+.modal-header h3 { font-size: 16px; font-weight: 600; font-family: 'Noto Serif SC', serif; max-width: 600px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-close {
+  width: 28px; height: 28px; border: none; background: rgba(255,255,255,0.15);
+  color: #fff; border-radius: 50%; cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+}
+.modal-close:hover { background: rgba(255,255,255,0.3); }
+.modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+.modal-footer {
+  padding: 14px 24px; border-top: 1px solid var(--border-light);
+  display: flex; justify-content: flex-end; gap: 10px; background: var(--bg);
+}
+.detail-section { margin-bottom: 20px; }
+.detail-section:last-child { margin-bottom: 0; }
+.detail-section-title {
+  font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border-light);
+  display: flex; align-items: center; gap: 6px;
+}
+.detail-section-title::before { content: ''; width: 3px; height: 14px; background: var(--accent); border-radius: 2px; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 24px; }
+.detail-item { display: flex; font-size: 13px; line-height: 1.6; }
+.detail-item.full { grid-column: 1 / -1; }
+.detail-label { color: var(--text-secondary); min-width: 80px; flex-shrink: 0; }
+.detail-value { color: var(--text); font-weight: 500; flex: 1; }
+.detail-value.price-highlight { color: var(--danger); font-size: 18px; font-weight: 700; }
+.detail-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
+.detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.detail-tag {
+  display: inline-block; padding: 3px 10px; border-radius: 12px;
+  font-size: 11px; background: rgba(201, 169, 110, 0.12); color: #9a7b3e;
+  border: 1px solid rgba(201, 169, 110, 0.3);
+}
+.toast {
+  position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-20px);
+  background: var(--text); color: #fff; padding: 10px 24px; border-radius: var(--radius);
+  font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 2000;
+  opacity: 0; transition: all 0.3s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+.footer-note {
+  margin-top: 20px; padding: 14px 20px;
+  background: rgba(201, 169, 110, 0.08); border: 1px solid rgba(201, 169, 110, 0.25);
+  border-radius: var(--radius); font-size: 12px; color: var(--text-secondary); line-height: 1.7;
+}
+.footer-note strong { color: var(--primary); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <div>
+      <h1>法拍房信息查询工具</h1>
+      <div class="header-subtitle">REAL-TIME DATA FROM ALI AUCTION</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="data-source-badge"><span class="dot"></span>阿里拍卖实时数据</span>
+    <button class="header-btn" onclick="exportCSV()">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      导出CSV
+    </button>
+  </div>
+</header>
+
+<main class="main">
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">已加载房源</div>
+      <div class="stat-value"><span id="statLoaded">0</span><span class="stat-unit">套</span></div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">正在拍卖</div>
+      <div class="stat-value"><span id="statActive">0</span><span class="stat-unit">套</span></div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">即将开始</div>
+      <div class="stat-value"><span id="statUpcoming">0</span><span class="stat-unit">套</span></div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-label">符合筛选条件</div>
+      <div class="stat-value"><span id="statFiltered">0</span><span class="stat-unit">套</span></div>
+    </div>
+  </div>
+
+  <div class="filter-panel">
+    <div class="filter-title">
+      <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      筛选条件（数据实时来自阿里拍卖）
+    </div>
+    <div class="filter-grid">
+      <div class="filter-item">
+        <label class="filter-label">省份 / 直辖市</label>
+        <select class="filter-select" id="provinceSelect" onchange="onProvinceChange()">
+          <option value="">加载中...</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <label class="filter-label">城市</label>
+        <select class="filter-select" id="citySelect" onchange="onCityChange()" disabled>
+          <option value="">请先选择省份</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <label class="filter-label">区 / 县</label>
+        <select class="filter-select" id="districtSelect" onchange="applyFilters()" disabled>
+          <option value="">请先选择城市</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <label class="filter-label">房产类型</label>
+        <select class="filter-select" id="categorySelect" onchange="applyFilters()">
+          <option value="206060601">住宅用房</option>
+          <option value="206058503">别墅</option>
+          <option value="206385702">商铺</option>
+          <option value="">全部房产</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="filter-grid" style="margin-bottom:14px;">
+      <div class="filter-item">
+        <label class="filter-label">拍卖状态</label>
+        <div class="status-tabs" id="statusTabs">
+          <button class="status-tab active" data-status="all" onclick="setStatusFilter('all')">全部</button>
+          <button class="status-tab" data-status="active" onclick="setStatusFilter('active')">正在拍卖</button>
+          <button class="status-tab" data-status="upcoming" onclick="setStatusFilter('upcoming')">即将开始</button>
+        </div>
+      </div>
+      <div class="filter-item" style="grid-column: span 3;">
+        <label class="filter-label">拍卖时间范围</label>
+        <div class="time-quick" id="timeQuick">
+          <button class="time-quick-btn" data-days="3" onclick="setTimeQuick(3)">近3天</button>
+          <button class="time-quick-btn active" data-days="7" onclick="setTimeQuick(7)">近7天</button>
+          <button class="time-quick-btn" data-days="15" onclick="setTimeQuick(15)">近15天</button>
+          <button class="time-quick-btn" data-days="30" onclick="setTimeQuick(30)">近30天</button>
+          <button class="time-quick-btn" data-days="90" onclick="setTimeQuick(90)">近90天</button>
+          <button class="time-quick-btn" data-days="all" onclick="setTimeQuick('all')">全部时间</button>
+        </div>
+        <div class="time-custom">
+          <input type="date" id="dateStart" onchange="onCustomDateChange()">
+          <span class="time-sep">至</span>
+          <input type="date" id="dateEnd" onchange="onCustomDateChange()">
+          <span style="font-size:11px;color:var(--text-muted);">（选择日期后自动切换为自定义范围）</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-grid" style="margin-bottom:0; grid-template-columns: 2fr 1fr 1fr;">
+      <div class="filter-item">
+        <label class="filter-label">关键词搜索（小区名 / 地址 / 标的名称）</label>
+        <input type="text" class="filter-input" id="keywordInput" placeholder="输入关键词，如：万科、莘庄、古美..." oninput="applyFilters()">
+      </div>
+      <div class="filter-item">
+        <label class="filter-label">价格区间（起拍价，万元）</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" class="filter-input" id="priceMin" placeholder="最低" min="0" oninput="applyFilters()">
+          <span class="time-sep">-</span>
+          <input type="number" class="filter-input" id="priceMax" placeholder="最高" min="0" oninput="applyFilters()">
+        </div>
+      </div>
+      <div class="filter-item">
+        <label class="filter-label">面积区间（平方米）</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" class="filter-input" id="areaMin" placeholder="最小" min="0" oninput="applyFilters()">
+          <span class="time-sep">-</span>
+          <input type="number" class="filter-input" id="areaMax" placeholder="最大" min="0" oninput="applyFilters()">
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-actions" style="margin-top:14px;">
+      <div class="filter-actions-left">
+        <span class="load-status" id="loadStatus" style="display:none;">
+          <span class="spinner"></span>
+          <span id="loadStatusText">正在从阿里拍卖获取数据...</span>
+        </span>
+        <span id="apiTotalInfo" style="font-size:12px;color:var(--text-secondary);"></span>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-outline" onclick="resetFilters()">
+          <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          重置筛选
+        </button>
+        <button class="btn btn-primary" id="searchBtn" onclick="fetchData()">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          查询并加载数据
+        </button>
+        <button class="btn btn-accent" id="loadMoreBtn" onclick="loadMore()" style="display:none;">
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          加载更多
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-toolbar">
+    <div class="toolbar-left">
+      <div class="result-count">符合条件 <strong id="resultCount">0</strong> 套法拍房</div>
+      <span class="current-filter-tag" id="currentRegionTag">全部地区</span>
+      <span class="current-filter-tag" id="currentTimeTag">近7天</span>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div class="table-wrapper">
+      <table class="data-table" id="dataTable">
+        <thead>
+          <tr>
+            <th class="col-index" style="cursor:default;">序号</th>
+            <th class="col-time" onclick="sortBy('startTimeTs')">
+              <div class="th-content">拍卖时间 <span class="sort-icon"><span></span><span></span></span></div>
+            </th>
+            <th class="col-title" onclick="sortBy('title')">
+              <div class="th-content">标的名称 <span class="sort-icon"><span></span><span></span></span></div>
+            </th>
+            <th class="col-area" onclick="sortBy('area')">
+              <div class="th-content">面积(㎡) <span class="sort-icon"><span></span><span></span></span></div>
+            </th>
+            <th class="col-price" onclick="sortBy('startPrice')">
+              <div class="th-content">起拍价 <span class="sort-icon"><span></span><span></span></span></div>
+            </th>
+            <th class="col-deposit" onclick="sortBy('deposit')">
+              <div class="th-content">保证金 <span class="sort-icon"><span></span><span></span></span></div>
+            </th>
+            <th class="col-bids">出价/关注</th>
+            <th class="col-status">拍卖状态</th>
+            <th class="col-action" style="cursor:default;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="9">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <h3>请选择地区后点击"查询并加载数据"</h3>
+              <p>数据将实时从阿里拍卖获取，例如选择"上海市-上海市-闵行区"查看该地区法拍房</p>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <div class="pagination-info" id="paginationInfo">请先查询数据</div>
+      <div class="pagination-controls">
+        <button class="page-btn" id="prevBtn" onclick="prevPage()" disabled>上一页</button>
+        <span id="pageNumbers" style="display:inline-flex;gap:4px;"></span>
+        <button class="page-btn" id="nextBtn" onclick="nextPage()" disabled>下一页</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <strong>数据说明：</strong>本工具数据实时来自阿里拍卖（sf.taobao.com）司法拍卖频道，每次查询都会从阿里服务器获取最新数据。
+    由于阿里API每页返回10条数据，可点击"加载更多"获取后续页面。时间范围、关键词、价格和面积筛选在本地对已加载数据进行过滤。
+    点击"查看详情"可查看完整标的信息，点击"去竞拍"可跳转到阿里拍卖原始页面参与竞拍。导出功能可将当前筛选结果保存为CSV文件。
+  </div>
+</main>
+
+<!-- 详情弹窗 -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="detailTitle">标的详情</h3>
+      <button class="modal-close" onclick="closeModal('detailModal')">&times;</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('detailModal')">关闭</button>
+      <button class="btn btn-primary" id="detailGoBtn" onclick="goToAuction()">去阿里拍卖竞拍</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// 应用状态
+// ============================================================
+const state = {
+  areaTree: [],
+  allItems: [],
+  filteredItems: [],
+  currentPage: 1,
+  pageSize: 20,
+  sortField: 'startTimeTs',
+  sortOrder: 'asc',
+  apiPage: 1,
+  apiTotal: 0,
+  loading: false,
+  currentDetail: null,
+  filters: {
+    province: '', city: '', district: '',
+    category: '206060601',
+    status: 'all',
+    timeMode: 'quick', timeDays: 7,
+    dateStart: '', dateEnd: '',
+    keyword: '', priceMin: '', priceMax: '',
+    areaMin: '', areaMax: ''
+  }
+};
+
+// ============================================================
+// 初始化
+// ============================================================
+async function init() {
+  await loadAreaTree();
+  // 默认选中上海
+  const shanghai = state.areaTree.find(p => p.name.includes('上海'));
+  if (shanghai) {
+    document.getElementById('provinceSelect').value = shanghai.name;
+    onProvinceChange();
+    const shCity = shanghai.children?.[0];
+    if (shCity) {
+      setTimeout(() => {
+        document.getElementById('citySelect').value = shCity.name;
+        onCityChange();
+        const minhang = shCity.children?.find(d => d.name.includes('闵行'));
+        if (minhang) {
+          setTimeout(() => {
+            document.getElementById('districtSelect').value = minhang.name;
+          }, 100);
+        }
+      }, 100);
+    }
+  }
+}
+
+async function loadAreaTree() {
+  try {
+    const res = await fetch('/api/areas');
+    const json = await res.json();
+    if (json.success) {
+      state.areaTree = json.data;
+      const select = document.getElementById('provinceSelect');
+      select.innerHTML = '<option value="">请选择省份</option>';
+      state.areaTree.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    showToast('加载地区列表失败: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// 地区联动
+// ============================================================
+function onProvinceChange() {
+  const province = document.getElementById('provinceSelect').value;
+  const citySelect = document.getElementById('citySelect');
+  const districtSelect = document.getElementById('districtSelect');
+  
+  state.filters.province = province;
+  state.filters.city = '';
+  state.filters.district = '';
+  
+  citySelect.innerHTML = '<option value="">请选择城市</option>';
+  districtSelect.innerHTML = '<option value="">请先选择城市</option>';
+  districtSelect.disabled = true;
+  
+  if (province) {
+    const p = state.areaTree.find(x => x.name === province);
+    if (p && p.children) {
+      citySelect.disabled = false;
+      p.children.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.name;
+        citySelect.appendChild(opt);
+      });
+    }
+  } else {
+    citySelect.disabled = true;
+  }
+}
+
+function onCityChange() {
+  const province = document.getElementById('provinceSelect').value;
+  const city = document.getElementById('citySelect').value;
+  const districtSelect = document.getElementById('districtSelect');
+  
+  state.filters.city = city;
+  state.filters.district = '';
+  
+  districtSelect.innerHTML = '<option value="">全部区县</option>';
+  
+  if (province && city) {
+    const p = state.areaTree.find(x => x.name === province);
+    const c = p?.children?.find(x => x.name === city);
+    if (c && c.children) {
+      districtSelect.disabled = false;
+      c.children.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.name;
+        opt.textContent = d.name;
+        districtSelect.appendChild(opt);
+      });
+    }
+  } else {
+    districtSelect.disabled = true;
+  }
+}
+
+// ============================================================
+// 筛选控制
+// ============================================================
+function setStatusFilter(status) {
+  state.filters.status = status;
+  document.querySelectorAll('.status-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.status === status);
+  });
+  applyFilters();
+}
+
+function setTimeQuick(days) {
+  state.filters.timeMode = 'quick';
+  state.filters.timeDays = days;
+  state.filters.dateStart = '';
+  state.filters.dateEnd = '';
+  document.getElementById('dateStart').value = '';
+  document.getElementById('dateEnd').value = '';
+  
+  document.querySelectorAll('.time-quick-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.days) === days || (days === 'all' && btn.dataset.days === 'all'));
+  });
+  applyFilters();
+}
+
+function onCustomDateChange() {
+  const start = document.getElementById('dateStart').value;
+  const end = document.getElementById('dateEnd').value;
+  if (start || end) {
+    state.filters.timeMode = 'custom';
+    state.filters.dateStart = start;
+    state.filters.dateEnd = end;
+    document.querySelectorAll('.time-quick-btn').forEach(btn => btn.classList.remove('active'));
+    applyFilters();
+  }
+}
+
+function resetFilters() {
+  state.filters = {
+    province: '', city: '', district: '', category: '206060601',
+    status: 'all', timeMode: 'quick', timeDays: 7,
+    dateStart: '', dateEnd: '', keyword: '',
+    priceMin: '', priceMax: '', areaMin: '', areaMax: ''
+  };
+  document.getElementById('provinceSelect').value = '';
+  document.getElementById('citySelect').innerHTML = '<option value="">请先选择省份</option>';
+  document.getElementById('citySelect').disabled = true;
+  document.getElementById('districtSelect').innerHTML = '<option value="">请先选择城市</option>';
+  document.getElementById('districtSelect').disabled = true;
+  document.getElementById('categorySelect').value = '206060601';
+  document.getElementById('keywordInput').value = '';
+  document.getElementById('priceMin').value = '';
+  document.getElementById('priceMax').value = '';
+  document.getElementById('areaMin').value = '';
+  document.getElementById('areaMax').value = '';
+  document.getElementById('dateStart').value = '';
+  document.getElementById('dateEnd').value = '';
+  setStatusFilter('all');
+  setTimeQuick(7);
+  state.allItems = [];
+  state.apiPage = 1;
+  state.apiTotal = 0;
+  document.getElementById('loadMoreBtn').style.display = 'none';
+  document.getElementById('apiTotalInfo').textContent = '';
+  applyFilters();
+  showToast('筛选条件已重置', 'success');
+}
+
+// ============================================================
+// 从阿里拍卖获取数据
+// ============================================================
+async function fetchData() {
+  if (state.loading) return;
+  
+  const f = state.filters;
+  f.province = document.getElementById('provinceSelect').value;
+  f.city = document.getElementById('citySelect').value;
+  f.district = document.getElementById('districtSelect').value;
+  f.category = document.getElementById('categorySelect').value;
+  
+  if (!f.province) {
+    showToast('请先选择省份', 'error');
+    return;
+  }
+  
+  state.loading = true;
+  state.apiPage = 1;
+  state.allItems = [];
+  
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('loadStatus').style.display = 'flex';
+  document.getElementById('loadStatusText').textContent = '正在从阿里拍卖获取数据...';
+  
+  try {
+    const statusMap = { all: '0,1', active: '0', upcoming: '1' };
+    const apiStatus = statusMap[f.status] || '0,1';
+    
+    const params = new URLSearchParams({
+      page: 1,
+      province: f.province,
+      city: f.city,
+      district: f.district,
+      status: apiStatus,
+      category: f.category
+    });
+    
+    const res = await fetch('/api/search?' + params.toString());
+    const json = await res.json();
+    
+    if (json.success) {
+      state.apiTotal = json.data.total;
+      state.allItems = json.data.items;
+      document.getElementById('apiTotalInfo').textContent = 
+        `阿里拍卖共找到 ${state.apiTotal} 条，已加载 ${state.allItems.length} 条`;
+      
+      if (state.allItems.length < state.apiTotal) {
+        document.getElementById('loadMoreBtn').style.display = 'inline-flex';
+      } else {
+        document.getElementById('loadMoreBtn').style.display = 'none';
+      }
+      
+      applyFilters();
+      showToast(`成功获取 ${state.allItems.length} 条真实数据`, 'success');
+    } else {
+      showToast('获取数据失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('获取数据失败: ' + e.message, 'error');
+  } finally {
+    state.loading = false;
+    document.getElementById('searchBtn').disabled = false;
+    document.getElementById('loadStatus').style.display = 'none';
+  }
+}
+
+async function loadMore() {
+  if (state.loading) return;
+  
+  const f = state.filters;
+  state.loading = true;
+  state.apiPage++;
+  
+  document.getElementById('loadMoreBtn').disabled = true;
+  document.getElementById('loadStatus').style.display = 'flex';
+  document.getElementById('loadStatusText').textContent = `正在加载第 ${state.apiPage} 页...`;
+  
+  try {
+    const statusMap = { all: '0,1', active: '0', upcoming: '1' };
+    const apiStatus = statusMap[f.status] || '0,1';
+    
+    const params = new URLSearchParams({
+      page: state.apiPage,
+      province: f.province,
+      city: f.city,
+      district: f.district,
+      status: apiStatus,
+      category: f.category
+    });
+    
+    const res = await fetch('/api/search?' + params.toString());
+    const json = await res.json();
+    
+    if (json.success && json.data.items.length > 0) {
+      // 去重
+      const existingIds = new Set(state.allItems.map(i => i.id));
+      const newItems = json.data.items.filter(i => !existingIds.has(i.id));
+      state.allItems = [...state.allItems, ...newItems];
+      
+      document.getElementById('apiTotalInfo').textContent = 
+        `阿里拍卖共找到 ${state.apiTotal} 条，已加载 ${state.allItems.length} 条`;
+      
+      if (state.allItems.length >= state.apiTotal || newItems.length === 0) {
+        document.getElementById('loadMoreBtn').style.display = 'none';
+      }
+      
+      applyFilters();
+      showToast(`新增 ${newItems.length} 条数据`, 'success');
+    } else {
+      document.getElementById('loadMoreBtn').style.display = 'none';
+      showToast('没有更多数据了', 'success');
+    }
+  } catch (e) {
+    showToast('加载失败: ' + e.message, 'error');
+    state.apiPage--;
+  } finally {
+    state.loading = false;
+    document.getElementById('loadMoreBtn').disabled = false;
+    document.getElementById('loadStatus').style.display = 'none';
+  }
+}
+
+// ============================================================
+// 本地筛选
+// ============================================================
+function applyFilters() {
+  const f = state.filters;
+  f.keyword = document.getElementById('keywordInput').value.trim();
+  f.priceMin = document.getElementById('priceMin').value;
+  f.priceMax = document.getElementById('priceMax').value;
+  f.areaMin = document.getElementById('areaMin').value;
+  f.areaMax = document.getElementById('areaMax').value;
+  
+  let result = [...state.allItems];
+  
+  // 状态筛选
+  if (f.status !== 'all') {
+    result = result.filter(item => item.status === f.status);
+  }
+  
+  // 时间筛选
+  const now = Date.now();
+  if (f.timeMode === 'quick' && f.timeDays !== 'all') {
+    const days = parseInt(f.timeDays);
+    const startTs = now - days * 24 * 60 * 60 * 1000;
+    const endTs = now + days * 24 * 60 * 60 * 1000;
+    result = result.filter(item => {
+      const ts = item.startTimeTs || 0;
+      return ts >= startTs && ts <= endTs;
+    });
+  } else if (f.timeMode === 'custom') {
+    if (f.dateStart) {
+      const startTs = new Date(f.dateStart + ' 00:00:00').getTime();
+      result = result.filter(item => (item.startTimeTs || 0) >= startTs);
+    }
+    if (f.dateEnd) {
+      const endTs = new Date(f.dateEnd + ' 23:59:59').getTime();
+      result = result.filter(item => (item.startTimeTs || 0) <= endTs);
+    }
+  }
+  
+  // 关键词
+  if (f.keyword) {
+    const kw = f.keyword.toLowerCase();
+    result = result.filter(item =>
+      (item.title || '').toLowerCase().includes(kw) ||
+      (item.community || '').toLowerCase().includes(kw) ||
+      (item.court || '').toLowerCase().includes(kw)
+    );
+  }
+  
+  // 价格
+  if (f.priceMin) result = result.filter(item => parseFloat(item.startPrice) >= parseFloat(f.priceMin));
+  if (f.priceMax) result = result.filter(item => parseFloat(item.startPrice) <= parseFloat(f.priceMax));
+  
+  // 面积
+  if (f.areaMin) result = result.filter(item => parseFloat(item.area) >= parseFloat(f.areaMin));
+  if (f.areaMax) result = result.filter(item => parseFloat(item.area) <= parseFloat(f.areaMax));
+  
+  // 排序
+  result = sortData(result, state.sortField, state.sortOrder);
+  
+  state.filteredItems = result;
+  state.currentPage = 1;
+  
+  renderTable();
+  renderStats();
+  updateFilterTags();
+}
+
+function sortData(data, field, order) {
+  return data.sort((a, b) => {
+    let valA = a[field], valB = b[field];
+    if (field === 'startPrice' || field === 'deposit' || field === 'area') {
+      valA = parseFloat(valA) || 0;
+      valB = parseFloat(valB) || 0;
+    }
+    if (valA < valB) return order === 'asc' ? -1 : 1;
+    if (valA > valB) return order === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+function sortBy(field) {
+  if (state.sortField === field) {
+    state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+  } else {
+    state.sortField = field;
+    state.sortOrder = 'asc';
+  }
+  state.filteredItems = sortData(state.filteredItems, state.sortField, state.sortOrder);
+  renderTable();
+}
+
+// ============================================================
+// 渲染
+// ============================================================
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const data = state.filteredItems;
+  
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <h3>${state.allItems.length > 0 ? '没有符合筛选条件的房源' : '请点击"查询并加载数据"获取阿里拍卖真实数据'}</h3>
+        <p>${state.allItems.length > 0 ? '请调整筛选条件' : '选择地区后点击查询按钮，数据实时来自阿里拍卖'}</p>
+      </div>
+    </td></tr>`;
+    document.getElementById('resultCount').textContent = '0';
+    document.getElementById('paginationInfo').textContent = '暂无数据';
+    document.getElementById('pageNumbers').innerHTML = '';
+    document.getElementById('prevBtn').disabled = true;
+    document.getElementById('nextBtn').disabled = true;
+    return;
+  }
+  
+  const start = (state.currentPage - 1) * state.pageSize;
+  const end = Math.min(start + state.pageSize, data.length);
+  const pageData = data.slice(start, end);
+  const totalPages = Math.ceil(data.length / state.pageSize);
+  
+  let html = '';
+  pageData.forEach((item, index) => {
+    const globalIndex = start + index + 1;
+    const timeParts = (item.startTime || '').split(' ');
+    const discount = item.discountTag || '';
+    
+    html += `<tr>
+      <td class="col-index">${globalIndex}</td>
+      <td class="col-time">
+        <div class="date">${timeParts[0] || '-'}</div>
+        <div class="time">${timeParts[1] || ''}</div>
+      </td>
+      <td class="col-title">
+        <div class="property-name">${item.title || '无标题'}${item.category ? `<span class="property-cat">${item.category}</span>` : ''}</div>
+        <div class="property-court">${item.court || ''} ${item.round ? '· ' + item.round : ''}</div>
+        ${item.community ? `<div class="property-court" style="color:var(--accent);">小区: ${item.community}</div>` : ''}
+      </td>
+      <td class="col-area">${item.area || '-'}</td>
+      <td class="col-price">
+        <div class="price-start">${item.startPrice || '-'}万</div>
+        ${item.evalPrice ? `<div class="price-eval">评估 ${item.evalPrice}万</div>` : ''}
+        ${discount ? `<div class="price-discount">${discount}</div>` : ''}
+      </td>
+      <td class="col-deposit">${item.deposit || '-'}万</td>
+      <td class="col-bids">
+        <div>出价 ${item.bidCount || 0}</div>
+        <div style="font-size:10px;color:var(--text-muted);">关注 ${item.subscribeCount || 0}</div>
+      </td>
+      <td class="col-status">
+        <span class="status-badge ${item.status}">${item.statusText || item.status}</span>
+      </td>
+      <td class="col-action">
+        <a class="action-link" onclick="showDetail(${item.id})">详情</a>
+        <a class="action-link ext" href="${item.detailUrl}" target="_blank">去竞拍</a>
+      </td>
+    </tr>`;
+  });
+  
+  tbody.innerHTML = html;
+  document.getElementById('resultCount').textContent = data.length;
+  document.getElementById('paginationInfo').textContent = `显示第 ${start + 1}-${end} 条，共 ${data.length} 条`;
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const container = document.getElementById('pageNumbers');
+  let html = '';
+  const maxVisible = 5;
+  let startPage = Math.max(1, state.currentPage - Math.floor(maxVisible / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+  if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+  
+  if (startPage > 1) {
+    html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+    if (startPage > 2) html += `<span style="padding:0 4px;color:var(--text-muted);">...</span>`;
+  }
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="page-btn ${i === state.currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+  }
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) html += `<span style="padding:0 4px;color:var(--text-muted);">...</span>`;
+    html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+  }
+  container.innerHTML = html;
+  document.getElementById('prevBtn').disabled = state.currentPage <= 1;
+  document.getElementById('nextBtn').disabled = state.currentPage >= totalPages;
+}
+
+function goToPage(page) { state.currentPage = page; renderTable(); }
+function prevPage() { if (state.currentPage > 1) { state.currentPage--; renderTable(); } }
+function nextPage() {
+  const totalPages = Math.ceil(state.filteredItems.length / state.pageSize);
+  if (state.currentPage < totalPages) { state.currentPage++; renderTable(); }
+}
+
+function renderStats() {
+  const all = state.allItems;
+  const filtered = state.filteredItems;
+  document.getElementById('statLoaded').textContent = all.length;
+  document.getElementById('statActive').textContent = all.filter(i => i.status === 'active').length;
+  document.getElementById('statUpcoming').textContent = all.filter(i => i.status === 'upcoming').length;
+  document.getElementById('statFiltered').textContent = filtered.length;
+}
+
+function updateFilterTags() {
+  const f = state.filters;
+  let regionText = '全部地区';
+  if (f.district) regionText = `${f.province} · ${f.city} · ${f.district}`;
+  else if (f.city) regionText = `${f.province} · ${f.city}`;
+  else if (f.province) regionText = f.province;
+  
+  let timeText = '';
+  if (f.timeMode === 'quick') timeText = f.timeDays === 'all' ? '全部时间' : `近${f.timeDays}天`;
+  else timeText = `${f.dateStart || '不限'} 至 ${f.dateEnd || '不限'}`;
+  
+  document.getElementById('currentRegionTag').textContent = regionText;
+  document.getElementById('currentTimeTag').textContent = timeText;
+}
+
+// ============================================================
+// 详情弹窗
+// ============================================================
+function showDetail(id) {
+  const item = state.allItems.find(d => d.id === id);
+  if (!item) return;
+  state.currentDetail = item;
+  
+  document.getElementById('detailTitle').textContent = item.title || '标的详情';
+  
+  let html = '';
+  if (item.picUrl) {
+    html += `<img src="${item.picUrl}" class="detail-image" alt="标的图片" onerror="this.style.display='none'">`;
+  }
+  
+  html += `<div class="detail-section">
+    <div class="detail-section-title">基本信息</div>
+    <div class="detail-grid">
+      <div class="detail-item full"><span class="detail-label">标的名称：</span><span class="detail-value">${item.title || '-'}</span></div>
+      <div class="detail-item"><span class="detail-label">开拍时间：</span><span class="detail-value">${item.startTime || '-'}</span></div>
+      <div class="detail-item"><span class="detail-label">结束时间：</span><span class="detail-value">${item.endTime || '-'}</span></div>
+      <div class="detail-item"><span class="detail-label">拍卖状态：</span><span class="detail-value"><span class="status-badge ${item.status}">${item.statusText || item.status}</span></span></div>
+      <div class="detail-item"><span class="detail-label">拍卖轮次：</span><span class="detail-value">${item.round || '-'}</span></div>
+      <div class="detail-item"><span class="detail-label">执行法院：</span><span class="detail-value">${item.court || '-'}</span></div>
+      <div class="detail-item"><span class="detail-label">房产类型：</span><span class="detail-value">${item.category || '-'}</span></div>
+      <div class="detail-item"><span class="detail-label">所在小区：</span><span class="detail-value">${item.community || '-'}</span></div>
+    </div>
+  </div>`;
+  
+  html += `<div class="detail-section">
+    <div class="detail-section-title">价格信息</div>
+    <div class="detail-grid">
+      <div class="detail-item"><span class="detail-label">起拍价：</span><span class="detail-value price-highlight">${item.startPrice || '-'} 万元</span></div>
+      <div class="detail-item"><span class="detail-label">当前价：</span><span class="detail-value">${item.currentPrice || '-'} 万元</span></div>
+      <div class="detail-item"><span class="detail-label">评估价：</span><span class="detail-value" style="text-decoration:line-through;color:var(--text-muted);">${item.evalPrice ? item.evalPrice + ' 万元' : '暂无'}</span></div>
+      <div class="detail-item"><span class="detail-label">保证金：</span><span class="detail-value">${item.deposit || '-'} 万元</span></div>
+      <div class="detail-item"><span class="detail-label">面积：</span><span class="detail-value">${item.area || '-'} 平方米</span></div>
+      <div class="detail-item"><span class="detail-label">出价次数：</span><span class="detail-value">${item.bidCount || 0} 次</span></div>
+      <div class="detail-item"><span class="detail-label">关注人数：</span><span class="detail-value">${item.subscribeCount || 0} 人</span></div>
+      <div class="detail-item"><span class="detail-label">浏览次数：</span><span class="detail-value">${item.viewCount || 0} 次</span></div>
+    </div>
+  </div>`;
+  
+  if (item.tags && item.tags.length > 0) {
+    html += `<div class="detail-section">
+      <div class="detail-section-title">标的标签</div>
+      <div class="detail-tags">
+        ${item.tags.map(t => `<span class="detail-tag">${t}</span>`).join('')}
+      </div>
+    </div>`;
+  }
+  
+  html += `<div class="detail-section">
+    <div class="detail-section-title">竞拍链接</div>
+    <div style="font-size:13px;color:var(--text-secondary);word-break:break-all;">
+      <a href="${item.detailUrl}" target="_blank" style="color:var(--info);">${item.detailUrl}</a>
+    </div>
+  </div>`;
+  
+  document.getElementById('detailBody').innerHTML = html;
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function goToAuction() {
+  if (state.currentDetail && state.currentDetail.detailUrl) {
+    window.open(state.currentDetail.detailUrl, '_blank');
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ============================================================
+// 导出CSV
+// ============================================================
+function exportCSV() {
+  const data = state.filteredItems;
+  if (data.length === 0) {
+    showToast('没有可导出的数据，请先查询', 'error');
+    return;
+  }
+  
+  const headers = ['序号', '拍卖时间', '结束时间', '标的名称', '所在小区', '房产类型', '面积(㎡)', '起拍价(万)', '当前价(万)', '评估价(万)', '保证金(万)', '拍卖状态', '拍卖轮次', '执行法院', '出价次数', '关注人数', '竞拍链接'];
+  
+  const rows = data.map((item, i) => [
+    i + 1, item.startTime, item.endTime, item.title, item.community,
+    item.category, item.area, item.startPrice, item.currentPrice,
+    item.evalPrice, item.deposit, item.statusText, item.round,
+    item.court, item.bidCount, item.subscribeCount, item.detailUrl
+  ]);
+  
+  const csv = [headers, ...rows].map(row =>
+    row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+  
+  const f = state.filters;
+  let filename = '阿里拍卖法拍房';
+  if (f.district) filename += `_${f.district}`;
+  else if (f.city) filename += `_${f.city}`;
+  filename += `_${new Date().toISOString().split('T')[0]}`;
+  
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`已导出 ${data.length} 条数据`, 'success');
+}
+
+// ============================================================
+// 工具函数
+// ============================================================
+function showToast(message, type = '') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast show ' + type;
+  setTimeout(() => { toast.className = 'toast'; }, 2500);
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+  });
+});
+
+// 启动
+init();
+</script>
+</body>
+</html>
