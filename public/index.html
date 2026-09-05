@@ -393,9 +393,10 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
       <div class="filter-item">
         <label class="filter-label">房产类型</label>
         <select class="filter-select" id="categorySelect" onchange="applyFilters()">
-          <option value="206060601">住宅用房</option>
-          <option value="206058503">别墅</option>
-          <option value="206385702">商铺</option>
+          <option value="residential">住宅用房</option>
+          <option value="commercial">商业用房</option>
+          <option value="industrial">工业用房</option>
+          <option value="other">其他用房</option>
           <option value="">全部房产</option>
         </select>
       </div>
@@ -582,7 +583,7 @@ const state = {
   currentDetail: null,
   filters: {
     province: '', city: '', district: '',
-    category: '206060601',
+    category: 'residential',
     status: 'all',
     timeMode: 'quick', timeDays: 'all',
     dateStart: '', dateEnd: '',
@@ -735,7 +736,7 @@ function onCustomDateChange() {
 
 function resetFilters() {
   state.filters = {
-    province: '', city: '', district: '', category: '206060601',
+    province: '', city: '', district: '', category: 'residential',
     status: 'all', timeMode: 'quick', timeDays: 'all',
     dateStart: '', dateEnd: '', keyword: '',
     priceMin: '', priceMax: '', areaMin: '', areaMax: '', source: ''
@@ -745,7 +746,7 @@ function resetFilters() {
   document.getElementById('citySelect').disabled = true;
   document.getElementById('districtSelect').innerHTML = '<option value="">请先选择城市</option>';
   document.getElementById('districtSelect').disabled = true;
-  document.getElementById('categorySelect').value = '206060601';
+  document.getElementById('categorySelect').value = 'residential';
   document.getElementById('sourceSelect').value = '';
   document.getElementById('keywordInput').value = '';
   document.getElementById('priceMin').value = '';
@@ -798,7 +799,7 @@ async function fetchData() {
     let allItems = [];
     let apiTotal = 0;
     let page = 1;
-    const maxPages = 10; // 最多加载10页（100条），避免超时
+    const maxPages = 15; // 最多加载15页（150条），避免超时
     
     while (page <= maxPages) {
       document.getElementById('loadStatusText').textContent = 
@@ -810,7 +811,7 @@ async function fetchData() {
         city: f.city,
         district: f.district,
         status: apiStatus,
-        category: f.category
+        category: ''
       });
       
       const res = await fetch('/api/search?' + params.toString());
@@ -952,6 +953,29 @@ function applyFilters() {
       (item.community || '').toLowerCase().includes(kw) ||
       (item.court || '').toLowerCase().includes(kw)
     );
+  }
+  
+  // 房产类型筛选（与阿里拍卖网页分类一致）
+  if (f.category) {
+    const residentialCats = ['普通住宅', '商住公寓', '别墅'];
+    const commercialCats = ['商铺', '写字楼', '商业用房'];
+    const industrialCats = ['工业用房'];
+    let allowedCats = [];
+    if (f.category === 'residential') allowedCats = residentialCats;
+    else if (f.category === 'commercial') allowedCats = commercialCats;
+    else if (f.category === 'industrial') allowedCats = industrialCats;
+    else if (f.category === 'other') {
+      // 其他用房：非住宅、非商业、非工业的房产类
+      const allPropertyCats = [...residentialCats, ...commercialCats, ...industrialCats];
+      const nonPropertyCats = ['机动车', '股权', '债权', '医疗器械', '其他设备', '家用电器', '无形资产', '翡翠', '玛瑙', '其他玉石', '乘用车', '车位'];
+      result = result.filter(item => {
+        const cat = item.category || '';
+        return cat && !allPropertyCats.includes(cat) && !nonPropertyCats.includes(cat);
+      });
+    }
+    if (allowedCats.length > 0) {
+      result = result.filter(item => allowedCats.includes(item.category || ''));
+    }
   }
   
   // 价格
