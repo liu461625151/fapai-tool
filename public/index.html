@@ -296,14 +296,12 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
 .detail-value { color: var(--text); font-weight: 500; flex: 1; }
 .detail-value.price-highlight { color: var(--danger); font-size: 18px; font-weight: 700; }
 .detail-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
-.detail-gallery { margin-bottom: 12px; }
-.detail-gallery-main { position: relative; width: 100%; max-height: 350px; overflow: hidden; border-radius: var(--radius); background: #f5f5f5; }
-.detail-gallery-main img { width: 100%; max-height: 350px; object-fit: contain; display: block; }
-.gallery-counter { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-.detail-gallery-thumbs { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; padding-bottom: 4px; }
-.gallery-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; opacity: 0.7; transition: all 0.2s; }
-.gallery-thumb:hover { opacity: 1; }
-.gallery-thumb.active { border-color: var(--primary); opacity: 1; }
+.detail-images-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.detail-image-item { position: relative; width: 100%; padding-top: 75%; border-radius: 8px; overflow: hidden; cursor: pointer; background: #f5f5f5; transition: transform 0.2s; }
+.detail-image-item:hover { transform: scale(1.02); }
+.detail-image-item img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+.detail-image-index { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.6); color: #fff; padding: 1px 6px; border-radius: 8px; font-size: 11px; }
+@media (max-width: 600px) { .detail-images-grid { grid-template-columns: repeat(2, 1fr); } }
 .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .detail-tag {
   display: inline-block; padding: 3px 10px; border-radius: 12px;
@@ -787,32 +785,48 @@ async function fetchData() {
     const statusMap = { all: '0,1', active: '0', upcoming: '1' };
     const apiStatus = statusMap[f.status] || '0,1';
     
-    const params = new URLSearchParams({
-      page: 1,
-      province: f.province,
-      city: f.city,
-      district: f.district,
-      status: apiStatus,
-      category: f.category
-    });
+    // 首次加载2页API数据（每页10条，共20条），确保第一页能显示20套
+    let allItems = [];
+    let apiTotal = 0;
+    const pagesToLoad = 2;
     
-    const res = await fetch('/api/search?' + params.toString());
-    const json = await res.json();
-    
-    if (json.success) {
-      state.apiTotal = json.data.total;
-      state.allItems = json.data.items;
-      document.getElementById('apiTotalInfo').textContent = 
-        `阿里拍卖共找到 ${state.apiTotal} 条，已加载 ${state.allItems.length} 条`;
+    for (let p = 1; p <= pagesToLoad; p++) {
+      document.getElementById('loadStatusText').textContent = `正在从阿里拍卖获取数据... (${p}/${pagesToLoad})`;
+      const params = new URLSearchParams({
+        page: p,
+        province: f.province,
+        city: f.city,
+        district: f.district,
+        status: apiStatus,
+        category: f.category
+      });
       
-      if (state.allItems.length < state.apiTotal) {
-        document.getElementById('loadMoreBtn').style.display = 'inline-flex';
+      const res = await fetch('/api/search?' + params.toString());
+      const json = await res.json();
+      
+      if (json.success) {
+        apiTotal = json.data.total;
+        allItems = allItems.concat(json.data.items);
+        if (allItems.length >= apiTotal) break;
       } else {
-        document.getElementById('loadMoreBtn').style.display = 'none';
+        throw new Error(json.error || '获取数据失败');
       }
-      
-      applyFilters();
-      showToast(`成功获取 ${state.allItems.length} 条真实数据`, 'success');
+    }
+    
+    state.apiTotal = apiTotal;
+    state.allItems = allItems;
+    state.apiPage = pagesToLoad;
+    document.getElementById('apiTotalInfo').textContent = 
+      `阿里拍卖共找到 ${state.apiTotal} 条，已加载 ${state.allItems.length} 条`;
+    
+    if (state.allItems.length < state.apiTotal) {
+      document.getElementById('loadMoreBtn').style.display = 'inline-flex';
+    } else {
+      document.getElementById('loadMoreBtn').style.display = 'none';
+    }
+    
+    applyFilters();
+    showToast(`成功获取 ${state.allItems.length} 条真实数据`, 'success');
     } else {
       showToast('获取数据失败: ' + json.error, 'error');
     }
@@ -1071,11 +1085,37 @@ function renderPagination(totalPages) {
   document.getElementById('nextBtn').disabled = state.currentPage >= totalPages;
 }
 
-function goToPage(page) { state.currentPage = page; renderTable(); }
+function goToPage(page) {
+  const needed = page * state.pageSize;
+  // 如果目标页需要的数据还没加载，自动加载更多
+  if (needed > state.filteredItems.length && state.allItems.length < state.apiTotal) {
+    loadMore().then(() => {
+      applyFilters();
+      state.currentPage = Math.min(page, Math.ceil(state.filteredItems.length / state.pageSize));
+      renderTable();
+    });
+  } else {
+    state.currentPage = page;
+    renderTable();
+  }
+}
 function prevPage() { if (state.currentPage > 1) { state.currentPage--; renderTable(); } }
 function nextPage() {
   const totalPages = Math.ceil(state.filteredItems.length / state.pageSize);
-  if (state.currentPage < totalPages) { state.currentPage++; renderTable(); }
+  if (state.currentPage < totalPages) {
+    state.currentPage++;
+    renderTable();
+  } else if (state.allItems.length < state.apiTotal) {
+    // 已经到最后一页，但还有更多数据未加载，自动加载
+    loadMore().then(() => {
+      applyFilters();
+      const newTotalPages = Math.ceil(state.filteredItems.length / state.pageSize);
+      if (state.currentPage < newTotalPages) {
+        state.currentPage++;
+        renderTable();
+      }
+    });
+  }
 }
 
 function renderStats() {
@@ -1113,24 +1153,18 @@ function showDetail(id) {
   document.getElementById('detailTitle').textContent = item.title || '标的详情';
   
   let html = '';
-  // 图片画廊
+  // 所有图片直接展示（网格布局）
   const pics = (item.picUrls && item.picUrls.length > 0) ? item.picUrls : (item.picUrl ? [item.picUrl] : []);
   if (pics.length > 0) {
-    if (pics.length === 1) {
-      html += `<img src="${pics[0]}" class="detail-image" alt="标的图片" onerror="this.style.display='none'">`;
-    } else {
-      html += `<div class="detail-gallery">
-        <div class="detail-gallery-main">
-          <img id="galleryMain" src="${pics[0]}" alt="标的图片" onerror="this.style.display='none'">
-          ${pics.length > 1 ? `<div class="gallery-counter">1 / ${pics.length}</div>` : ''}
-        </div>
-        <div class="detail-gallery-thumbs">
-          ${pics.map((p, i) => `<img src="${p}" class="gallery-thumb ${i===0?'active':''}" onclick="switchGalleryImage(${i})" alt="图片${i+1}" onerror="this.style.display='none'">`).join('')}
-        </div>
-      </div>`;
-      state.galleryPics = pics;
-      state.galleryIndex = 0;
-    }
+    html += `<div class="detail-section">
+      <div class="detail-section-title">标的图片（共${pics.length}张）</div>
+      <div class="detail-images-grid">
+        ${pics.map((p, i) => `<div class="detail-image-item" onclick="window.open('${p}', '_blank')">
+          <img src="${p}" alt="图片${i+1}" loading="lazy" onerror="this.parentElement.style.display='none'">
+          <div class="detail-image-index">${i+1}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
   }
   
   html += `<div class="detail-section">
@@ -1171,6 +1205,18 @@ function showDetail(id) {
   }
   
   html += `<div class="detail-section">
+    <div class="detail-section-title">竞买公告</div>
+    <div style="background:var(--bg-light);padding:12px;border-radius:8px;margin-bottom:10px;">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">
+        竞买公告包含拍卖标的详细信息、瑕疵说明、竞买须知、过户税费等重要内容，请务必仔细阅读。
+      </div>
+      <button onclick="window.open('${item.detailUrl}', '_blank')" style="background:var(--primary);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;">
+        查看完整竞买公告 →
+      </button>
+    </div>
+  </div>`;
+  
+  html += `<div class="detail-section">
     <div class="detail-section-title">竞拍链接</div>
     <div style="font-size:13px;color:var(--text-secondary);word-break:break-all;">
       <a href="${item.detailUrl}" target="_blank" style="color:var(--info);">${item.detailUrl}</a>
@@ -1206,20 +1252,34 @@ function closeModal(id) {
 // ============================================================
 // 导出CSV
 // ============================================================
-function exportCSV() {
-  const data = state.filteredItems;
-  if (data.length === 0) {
+async function exportCSV() {
+  if (state.filteredItems.length === 0 && state.allItems.length === 0) {
     showToast('没有可导出的数据，请先查询', 'error');
     return;
   }
   
-  const headers = ['序号', '拍卖时间', '结束时间', '标的名称', '所在小区', '房产类型', '面积(㎡)', '起拍价(万)', '当前价(万)', '评估价(万)', '保证金(万)', '拍卖状态', '拍卖轮次', '执行法院', '出价次数', '关注人数', '竞拍链接'];
+  // 如果还有未加载的数据，先自动加载全部
+  if (state.allItems.length < state.apiTotal) {
+    showToast('正在加载全部数据，请稍候...', 'info');
+    await loadAllData();
+  }
+  
+  // 重新应用筛选，确保filteredItems包含所有数据
+  applyFilters();
+  const data = state.filteredItems;
+  
+  if (data.length === 0) {
+    showToast('没有可导出的数据', 'error');
+    return;
+  }
+  
+  const headers = ['序号', '拍卖时间', '结束时间', '标的名称', '所在小区', '房产类型', '面积(㎡)', '起拍价(万)', '当前价(万)', '评估价(万)', '保证金(万)', '拍卖状态', '拍卖轮次', '执行法院', '出价次数', '关注人数', '浏览次数', '竞拍链接'];
   
   const rows = data.map((item, i) => [
     i + 1, item.startTime, item.endTime, item.title, item.community,
     item.category, item.area, item.startPrice, item.currentPrice,
     item.evalPrice, item.deposit, item.statusText, item.round,
-    item.court, item.bidCount, item.subscribeCount, item.detailUrl
+    item.court, item.bidCount, item.subscribeCount, item.viewCount, item.detailUrl
   ]);
   
   const csv = [headers, ...rows].map(row =>
@@ -1241,7 +1301,59 @@ function exportCSV() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast(`已导出 ${data.length} 条数据`, 'success');
+  showToast(`已导出全部 ${data.length} 条数据`, 'success');
+}
+
+// 加载所有页数据
+async function loadAllData() {
+  if (state.loading) return;
+  
+  const f = state.filters;
+  const statusMap = { all: '0,1', active: '0', upcoming: '1' };
+  const apiStatus = statusMap[f.status] || '0,1';
+  
+  state.loading = true;
+  document.getElementById('loadStatus').style.display = 'flex';
+  
+  try {
+    while (state.allItems.length < state.apiTotal) {
+      state.apiPage++;
+      document.getElementById('loadStatusText').textContent = 
+        `正在加载全部数据... 已加载 ${state.allItems.length}/${state.apiTotal}`;
+      
+      const params = new URLSearchParams({
+        page: state.apiPage,
+        province: f.province,
+        city: f.city,
+        district: f.district,
+        status: apiStatus,
+        category: f.category
+      });
+      
+      const res = await fetch('/api/search?' + params.toString());
+      const json = await res.json();
+      
+      if (json.success && json.data.items.length > 0) {
+        state.allItems = state.allItems.concat(json.data.items);
+        document.getElementById('apiTotalInfo').textContent = 
+          `阿里拍卖共找到 ${state.apiTotal} 条，已加载 ${state.allItems.length} 条`;
+      } else {
+        break;
+      }
+      
+      // 安全限制：最多加载100页（1000条），避免无限循环
+      if (state.apiPage >= 100) break;
+    }
+    
+    if (state.allItems.length >= state.apiTotal) {
+      document.getElementById('loadMoreBtn').style.display = 'none';
+    }
+  } catch (e) {
+    showToast('加载全部数据时出错: ' + e.message, 'error');
+  } finally {
+    state.loading = false;
+    document.getElementById('loadStatus').style.display = 'none';
+  }
 }
 
 // ============================================================
