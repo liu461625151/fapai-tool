@@ -5,6 +5,11 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["puppeteer-core", "@sparticuz/chromium"]
+  timeout = 26
+
+[functions.detail]
+  timeout = 26
+  memory = 1024
 
 [[redirects]]
   from = "/api/search"
