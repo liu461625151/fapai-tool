@@ -27,7 +27,7 @@ exports.handler = async (event, context) => {
       city: params.city || '',
       district: params.district || '',
       status: params.status || '0,1',
-      category: params.category || '206060601'
+      category: params.category || ''
     });
     return {
       statusCode: 200,
