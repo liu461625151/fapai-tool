@@ -1,6 +1,7 @@
 /**
  * Netlify Serverless Function - 搜索法拍房
  * GET /api/search?page=1&province=上海&city=上海&district=闵行区&status=0,1&category=206060601
+ * Version: v2
  */
 
 const { searchJudicial } = require('../../lib/ali-client');
@@ -10,7 +11,8 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'X-App-Version': 'v2'
   };
 
   if (event.httpMethod === 'OPTIONS') {
