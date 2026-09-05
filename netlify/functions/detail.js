@@ -1,49 +1,13 @@
 /**
  * Netlify Serverless Function - 获取法拍房详情（看样时间等）
- * GET /api/detail?itemId=xxx&browserlessToken=xxx
+ * GET /api/detail?itemId=xxx
  * 
- * 使用Browserless无头浏览器服务渲染页面，提取看样时间
+ * 使用Puppeteer（无头浏览器）在Netlify函数中直接渲染页面
+ * 不需要用户注册任何第三方服务，完全免费
  */
 
-const https = require('https');
-
-// 调用Browserless渲染页面
-async function fetchViaBrowserless(itemId, token) {
-  return new Promise((resolve, reject) => {
-    const url = `https://sf-item.taobao.com/sf_item/${itemId}.htm`;
-    const postData = JSON.stringify({
-      url: url,
-      waitFor: 3000, // 等待3秒让页面渲染
-      gotoOptions: { waitUntil: 'networkidle2' }
-    });
-    
-    const options = {
-      hostname: 'chrome.browserless.io',
-      path: `/content?token=${encodeURIComponent(token)}`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    };
-    
-    const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', d => body += d);
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          resolve(body);
-        } else {
-          reject(new Error(`Browserless返回 ${res.statusCode}: ${body.substring(0, 200)}`));
-        }
-      });
-    });
-    req.on('error', reject);
-    req.setTimeout(30000, () => { req.destroy(); reject(new Error('Browserless请求超时')); });
-    req.write(postData);
-    req.end();
-  });
-}
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 
 // 从HTML中提取看样时间
 function extractSampleTime(html) {
@@ -75,7 +39,6 @@ function extractSampleTime(html) {
   // 方法3：查找所有日期范围，返回第一个
   const allDates = findDates(text);
   for (let i = 0; i < allDates.length - 1; i++) {
-    // 检查两个日期之间是否有连接词
     const date1Idx = text.indexOf(allDates[i]);
     const date2Idx = text.indexOf(allDates[i + 1]);
     if (date1Idx >= 0 && date2Idx >= 0) {
@@ -125,10 +88,11 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
+  let browser = null;
+  
   try {
     const params = event.queryStringParameters || {};
     const itemId = params.itemId;
-    const browserlessToken = params.browserlessToken || '';
     
     if (!itemId) {
       return {
@@ -138,26 +102,45 @@ exports.handler = async (event, context) => {
       };
     }
     
-    if (!browserlessToken) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ success: false, error: '缺少Browserless API Token，请先在设置中配置' })
-      };
-    }
+    // 启动Puppeteer
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
+    });
     
-    // 使用Browserless渲染页面
-    const html = await fetchViaBrowserless(itemId, browserlessToken);
+    const page = await browser.newPage();
     
-    if (!html || html.length < 5000) {
-      return {
-        statusCode: 502,
-        headers,
-        body: JSON.stringify({ success: false, error: '页面渲染失败或内容过少，请检查Browserless Token是否正确' })
-      };
-    }
+    // 设置User-Agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
+    // 拦截图片、CSS等资源，加快加载速度
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+    
+    // 访问详情页
+    const url = `https://sf-item.taobao.com/sf_item/${itemId}.htm`;
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 20000 });
+    
+    // 等待页面渲染
+    await page.waitForTimeout(3000);
+    
+    // 获取页面HTML
+    const html = await page.content();
+    
+    // 提取看样时间
     const sampleTime = extractSampleTime(html);
+    
+    await browser.close();
+    browser = null;
     
     return {
       statusCode: 200,
@@ -168,12 +151,15 @@ exports.handler = async (event, context) => {
           itemId: itemId,
           sampleTime: sampleTime,
           pageSize: html.length,
-          source: 'browserless'
+          source: 'puppeteer'
         }
       })
     };
   } catch (e) {
     console.error('Detail error:', e.message);
+    if (browser) {
+      try { await browser.close(); } catch (e) {}
+    }
     return {
       statusCode: 500,
       headers,

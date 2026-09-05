@@ -584,20 +584,18 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
     <div class="modal-body">
       <!-- Browserless API Token -->
       <div style="margin-bottom:20px;padding:12px;background:#e8f5e9;border-radius:8px;">
-        <strong style="color:#2e7d32;display:block;margin-bottom:8px;">🔑 Browserless API Token（批量获取看样时间必需）</strong>
-        <div style="font-size:12px;color:#666;margin-bottom:8px;line-height:1.5;">
-          用于批量自动获取看样时间，免费注册：<a href="https://www.browserless.io" target="_blank" style="color:#2e7d32;">browserless.io</a><br>
-          注册后在 dashboard 中复制 API Token 粘贴到下方
+        <strong style="color:#2e7d32;display:block;margin-bottom:8px;">✅ 看样时间自动获取（已配置）</strong>
+        <div style="font-size:12px;color:#666;line-height:1.5;">
+          系统已内置无头浏览器，点击"获取看样时间"按钮即可自动批量获取，不需要任何额外配置。<br>
+          免费额度：每月125,000次请求，足够多人使用。
         </div>
-        <input type="text" id="browserlessTokenInput" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:12px;" placeholder="粘贴 Browserless API Token...">
-        <div id="browserlessStatus" style="margin-top:8px;font-size:12px;color:var(--text-muted);"></div>
       </div>
       
       <!-- 淘宝Cookie（可选） -->
       <div style="margin-bottom:16px;padding:12px;background:#f5f5f5;border-radius:8px;">
         <strong style="display:block;margin-bottom:8px;">🍪 淘宝Cookie（可选）</strong>
         <div style="font-size:12px;color:#666;margin-bottom:8px;">
-          目前看样时间已通过Browserless获取，不需要Cookie。Cookie仅用于未来扩展功能。
+          目前看样时间已通过内置无头浏览器获取，不需要Cookie。Cookie仅用于未来扩展功能。
         </div>
         <details style="font-size:12px;">
           <summary style="cursor:pointer;color:#666;">点击展开Cookie设置</summary>
@@ -644,7 +642,6 @@ const state = {
   loading: false,
   currentDetail: null,
   taobaoCookie: localStorage.getItem('taobaoCookie') || '',
-  browserlessToken: localStorage.getItem('browserlessToken') || '',
   sampleTimeLoading: false,
   filters: {
     province: '', city: '', district: '',
@@ -1142,20 +1139,13 @@ function sortBy(field) {
 // ============================================================
 function showCookieSettings() {
   document.getElementById('cookieInput').value = state.taobaoCookie || '';
-  document.getElementById('browserlessTokenInput').value = state.browserlessToken || '';
-  document.getElementById('browserlessStatus').textContent = state.browserlessToken ? '✅ 已配置Browserless Token' : '⚠️ 尚未配置（获取看样时间必需）';
   document.getElementById('cookieModal').classList.add('show');
 }
 
 function saveAllSettings() {
-  const browserlessToken = document.getElementById('browserlessTokenInput').value.trim();
   const cookie = document.getElementById('cookieInput').value.trim();
   
-  state.browserlessToken = browserlessToken;
   state.taobaoCookie = cookie;
-  
-  if (browserlessToken) localStorage.setItem('browserlessToken', browserlessToken);
-  else localStorage.removeItem('browserlessToken');
   
   if (cookie) localStorage.setItem('taobaoCookie', cookie);
   else localStorage.removeItem('taobaoCookie');
@@ -1166,12 +1156,9 @@ function saveAllSettings() {
 
 function clearAllSettings() {
   if (confirm('确定要清除所有设置吗？')) {
-    state.browserlessToken = '';
     state.taobaoCookie = '';
-    localStorage.removeItem('browserlessToken');
     localStorage.removeItem('taobaoCookie');
     localStorage.removeItem('sampleTimes');
-    document.getElementById('browserlessTokenInput').value = '';
     document.getElementById('cookieInput').value = '';
     state.allItems.forEach(item => { delete item.sampleTime; });
     renderTable();
@@ -1183,12 +1170,6 @@ function clearAllSettings() {
 // 批量获取看样时间
 // ============================================================
 async function fetchSampleTimes() {
-  if (!state.browserlessToken) {
-    showToast('请先在设置中配置Browserless API Token', 'error');
-    showCookieSettings();
-    return;
-  }
-  
   if (state.sampleTimeLoading) {
     showToast('正在获取看样时间，请稍候...', 'info');
     return;
@@ -1221,15 +1202,14 @@ async function fetchSampleTimes() {
   let failCount = 0;
   const savedSampleTimes = JSON.parse(localStorage.getItem('sampleTimes') || '{}');
   
-  // 并发请求，限制同时3个（Browserless免费版并发限制）
-  const concurrency = 3;
+  // 并发请求，限制同时2个（Puppeteer启动需要时间）
+  const concurrency = 2;
   for (let i = 0; i < pageItems.length; i += concurrency) {
     const batch = pageItems.slice(i, i + concurrency);
     const promises = batch.map(async (item) => {
       try {
         const params = new URLSearchParams({
-          itemId: item.itemId || item.id,
-          browserlessToken: state.browserlessToken
+          itemId: item.itemId || item.id
         });
         const res = await fetch('/api/detail?' + params.toString());
         const json = await res.json();
