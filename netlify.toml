@@ -3,8 +3,6 @@
   functions = "netlify/functions"
 
 [functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["puppeteer-core", "@sparticuz/chromium"]
   timeout = 26
 
 [functions.detail]
