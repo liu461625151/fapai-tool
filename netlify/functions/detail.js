@@ -6,37 +6,33 @@
  * 不需要用户注册任何第三方服务，完全免费
  */
 
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
-
 // 从HTML中提取看样时间
 function extractSampleTime(html) {
   if (!html) return '';
   
-  // 移除HTML标签，获取纯文本
   const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   
-  // 方法1：在"看样"关键词附近查找日期
+  // 在"看样"关键词附近查找日期
   const sampleIdx = text.indexOf('看样');
   if (sampleIdx >= 0) {
     const nearby = text.substring(Math.max(0, sampleIdx - 100), Math.min(text.length, sampleIdx + 300));
     const dates = findDates(nearby);
     if (dates.length >= 2) {
-      return `${dates[0]} 至 ${dates[1]}`;
+      return dates[0] + ' 至 ' + dates[1];
     }
   }
   
-  // 方法2：查找"展示"关键词附近的日期
+  // 在"展示"关键词附近查找日期
   const displayIdx = text.indexOf('展示');
   if (displayIdx >= 0) {
     const nearby = text.substring(Math.max(0, displayIdx - 100), Math.min(text.length, displayIdx + 300));
     const dates = findDates(nearby);
     if (dates.length >= 2) {
-      return `${dates[0]} 至 ${dates[1]}`;
+      return dates[0] + ' 至 ' + dates[1];
     }
   }
   
-  // 方法3：查找所有日期范围，返回第一个
+  // 查找所有日期范围
   const allDates = findDates(text);
   for (let i = 0; i < allDates.length - 1; i++) {
     const date1Idx = text.indexOf(allDates[i]);
@@ -44,7 +40,7 @@ function extractSampleTime(html) {
     if (date1Idx >= 0 && date2Idx >= 0) {
       const between = text.substring(date1Idx + allDates[i].length, date2Idx);
       if (between.match(/至|到|—|-|~|到/) && between.length < 50) {
-        return `${allDates[i]} 至 ${allDates[i + 1]}`;
+        return allDates[i] + ' 至 ' + allDates[i + 1];
       }
     }
   }
@@ -52,7 +48,6 @@ function extractSampleTime(html) {
   return '';
 }
 
-// 从文本中查找所有日期
 function findDates(text) {
   const dates = [];
   const patterns = [
@@ -63,9 +58,9 @@ function findDates(text) {
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
-      let dateStr = `${match[1]}年${match[2]}月${match[3]}日`;
+      let dateStr = match[1] + '年' + match[2] + '月' + match[3] + '日';
       if (match[4]) {
-        dateStr += ` ${match[4]}:${match[5] || '00'}`;
+        dateStr += ' ' + match[4] + ':' + (match[5] || '00');
       }
       if (!dates.includes(dateStr)) {
         dates.push(dateStr);
@@ -76,7 +71,7 @@ function findDates(text) {
   return dates;
 }
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -102,18 +97,21 @@ export const handler = async (event, context) => {
       };
     }
     
+    // 动态导入ES Module
+    const puppeteer = await import('puppeteer-core');
+    const chromium = await import('@sparticuz/chromium');
+    
     // 启动Puppeteer
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+    browser = await puppeteer.default.launch({
+      args: chromium.default.args,
+      defaultViewport: chromium.default.defaultViewport,
+      executablePath: await chromium.default.executablePath(),
+      headless: chromium.default.headless,
       ignoreHTTPSErrors: true,
     });
     
     const page = await browser.newPage();
     
-    // 设置User-Agent
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
     // 拦截图片、CSS等资源，加快加载速度
@@ -126,17 +124,12 @@ export const handler = async (event, context) => {
       }
     });
     
-    // 访问详情页
-    const url = `https://sf-item.taobao.com/sf_item/${itemId}.htm`;
+    const url = 'https://sf-item.taobao.com/sf_item/' + itemId + '.htm';
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 20000 });
     
-    // 等待页面渲染
     await page.waitForTimeout(3000);
     
-    // 获取页面HTML
     const html = await page.content();
-    
-    // 提取看样时间
     const sampleTime = extractSampleTime(html);
     
     await browser.close();
