@@ -2,6 +2,9 @@
   publish = "public"
   functions = "netlify/functions"
 
+[functions]
+  timeout = 20
+
 [[redirects]]
   from = "/api/search"
   to = "/.netlify/functions/search"

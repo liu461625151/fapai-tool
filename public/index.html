@@ -296,6 +296,14 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
 .detail-value { color: var(--text); font-weight: 500; flex: 1; }
 .detail-value.price-highlight { color: var(--danger); font-size: 18px; font-weight: 700; }
 .detail-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: var(--radius); margin-bottom: 12px; }
+.detail-gallery { margin-bottom: 12px; }
+.detail-gallery-main { position: relative; width: 100%; max-height: 350px; overflow: hidden; border-radius: var(--radius); background: #f5f5f5; }
+.detail-gallery-main img { width: 100%; max-height: 350px; object-fit: contain; display: block; }
+.gallery-counter { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.detail-gallery-thumbs { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; padding-bottom: 4px; }
+.gallery-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; opacity: 0.7; transition: all 0.2s; }
+.gallery-thumb:hover { opacity: 1; }
+.gallery-thumb.active { border-color: var(--primary); opacity: 1; }
 .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .detail-tag {
   display: inline-block; padding: 3px 10px; border-radius: 12px;
@@ -500,7 +508,7 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
             <th class="col-deposit" onclick="sortBy('deposit')">
               <div class="th-content">保证金 <span class="sort-icon"><span></span><span></span></span></div>
             </th>
-            <th class="col-bids">出价/关注</th>
+            <th class="col-bids">出价/关注/浏览</th>
             <th class="col-status">拍卖状态</th>
             <th class="col-action" style="cursor:default;">操作</th>
           </tr>
@@ -895,11 +903,12 @@ function applyFilters() {
   const now = Date.now();
   if (f.timeMode === 'quick' && f.timeDays !== 'all') {
     const days = parseInt(f.timeDays);
-    const startTs = now - days * 24 * 60 * 60 * 1000;
     const endTs = now + days * 24 * 60 * 60 * 1000;
     result = result.filter(item => {
       const ts = item.startTimeTs || 0;
-      return ts >= startTs && ts <= endTs;
+      // 未来N天内开拍，或正在拍卖（已开始未结束）
+      const endTime = item.endTimeTs || 0;
+      return (ts >= now && ts <= endTs) || (item.status === 'active' && endTime > now);
     });
   } else if (f.timeMode === 'custom') {
     if (f.dateStart) {
@@ -1019,7 +1028,8 @@ function renderTable() {
       <td class="col-deposit">${item.deposit || '-'}万</td>
       <td class="col-bids">
         <div>出价 ${item.bidCount || 0}</div>
-        <div style="font-size:10px;color:var(--text-muted);">关注 ${item.subscribeCount || 0}</div>
+        <div style="font-size:10px;color:var(--text-muted);">关注 ${item.subscribeCount || 0}人</div>
+        <div style="font-size:10px;color:var(--text-muted);">浏览 ${item.viewCount || 0}</div>
       </td>
       <td class="col-status">
         <span class="status-badge ${item.status}">${item.statusText || item.status}</span>
@@ -1103,8 +1113,24 @@ function showDetail(id) {
   document.getElementById('detailTitle').textContent = item.title || '标的详情';
   
   let html = '';
-  if (item.picUrl) {
-    html += `<img src="${item.picUrl}" class="detail-image" alt="标的图片" onerror="this.style.display='none'">`;
+  // 图片画廊
+  const pics = (item.picUrls && item.picUrls.length > 0) ? item.picUrls : (item.picUrl ? [item.picUrl] : []);
+  if (pics.length > 0) {
+    if (pics.length === 1) {
+      html += `<img src="${pics[0]}" class="detail-image" alt="标的图片" onerror="this.style.display='none'">`;
+    } else {
+      html += `<div class="detail-gallery">
+        <div class="detail-gallery-main">
+          <img id="galleryMain" src="${pics[0]}" alt="标的图片" onerror="this.style.display='none'">
+          ${pics.length > 1 ? `<div class="gallery-counter">1 / ${pics.length}</div>` : ''}
+        </div>
+        <div class="detail-gallery-thumbs">
+          ${pics.map((p, i) => `<img src="${p}" class="gallery-thumb ${i===0?'active':''}" onclick="switchGalleryImage(${i})" alt="图片${i+1}" onerror="this.style.display='none'">`).join('')}
+        </div>
+      </div>`;
+      state.galleryPics = pics;
+      state.galleryIndex = 0;
+    }
   }
   
   html += `<div class="detail-section">
@@ -1153,6 +1179,18 @@ function showDetail(id) {
   
   document.getElementById('detailBody').innerHTML = html;
   document.getElementById('detailModal').classList.add('show');
+}
+
+function switchGalleryImage(index) {
+  if (!state.galleryPics || !state.galleryPics[index]) return;
+  state.galleryIndex = index;
+  const mainImg = document.getElementById('galleryMain');
+  if (mainImg) mainImg.src = state.galleryPics[index];
+  const counter = document.querySelector('.gallery-counter');
+  if (counter) counter.textContent = `${index + 1} / ${state.galleryPics.length}`;
+  document.querySelectorAll('.gallery-thumb').forEach((t, i) => {
+    t.classList.toggle('active', i === index);
+  });
 }
 
 function goToAuction() {
