@@ -582,13 +582,31 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
       <button class="modal-close" onclick="closeModal('cookieModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <div style="margin-bottom:16px;padding:12px;background:#fff8e1;border-radius:8px;font-size:13px;line-height:1.6;">
-        <strong>使用说明：</strong><br>
+      <div style="margin-bottom:16px;padding:12px;background:#e8f5e9;border-radius:8px;font-size:13px;line-height:1.8;">
+        <strong style="color:#2e7d32;">📋 最简单的获取方法（推荐）：</strong><br>
         1. 在浏览器中登录 <a href="https://www.taobao.com" target="_blank" style="color:var(--primary);">淘宝</a> 或 <a href="https://sf.taobao.com" target="_blank" style="color:var(--primary);">阿里拍卖</a><br>
-        2. 按 F12 打开开发者工具 → 切换到 Network（网络）标签<br>
-        3. 刷新页面，点击任意请求，在 Request Headers 中找到 Cookie，复制完整内容<br>
-        4. 粘贴到下方输入框，点击保存<br>
+        2. 按 <strong>F12</strong> 打开开发者工具<br>
+        3. 切换到 <strong>Console（控制台）</strong> 标签<br>
+        4. 输入下面的命令，按回车（Cookie会自动复制到剪贴板）：<br>
+        <div style="background:#fff;padding:8px 12px;border-radius:4px;margin:8px 0;font-family:monospace;font-size:12px;display:flex;align-items:center;justify-content:space-between;">
+          <span>copy(document.cookie)</span>
+          <button onclick="navigator.clipboard.writeText('copy(document.cookie)');showToast('命令已复制','success')" style="background:var(--primary);color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;">复制命令</button>
+        </div>
+        5. 回到本页面，在下方输入框按 <strong>Ctrl+V</strong> 粘贴，点击保存<br>
         <span style="color:#d32f2f;">⚠️ Cookie包含你的登录信息，请勿分享给他人。Cookie过期后需要重新获取。</span>
+      </div>
+      <div style="margin-bottom:16px;padding:12px;background:#e3f2fd;border-radius:8px;font-size:13px;line-height:1.6;">
+        <strong style="color:#1565c0;">🔖 更方便的方法（书签一键复制）：</strong><br>
+        1. 把下面的按钮拖拽到浏览器书签栏<br>
+        2. 在淘宝/阿里拍卖页面点击该书签<br>
+        3. Cookie自动复制到剪贴板，回到本页面粘贴即可<br>
+        <div style="text-align:center;margin-top:10px;">
+          <a href="javascript:(function(){try{copy(document.cookie);alert('Cookie已复制到剪贴板！');}catch(e){prompt('请手动复制以下Cookie：',document.cookie);}})()" 
+             style="display:inline-block;padding:10px 20px;background:var(--primary);color:#fff;text-decoration:none;border-radius:6px;font-weight:600;cursor:move;"
+             draggable="true">
+            📋 复制淘宝Cookie（拖到书签栏）
+          </a>
+        </div>
       </div>
       <label style="display:block;margin-bottom:8px;font-weight:600;">淘宝Cookie：</label>
       <textarea id="cookieInput" style="width:100%;min-height:120px;padding:10px;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:12px;resize:vertical;" placeholder="在此粘贴淘宝Cookie..."></textarea>
