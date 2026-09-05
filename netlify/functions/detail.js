@@ -6,6 +6,9 @@
  * 不需要用户注册任何第三方服务，完全免费
  */
 
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
+
 // 从HTML中提取看样时间
 function extractSampleTime(html) {
   if (!html) return '';
@@ -97,16 +100,12 @@ exports.handler = async (event, context) => {
       };
     }
     
-    // 动态导入ES Module
-    const puppeteer = await import('puppeteer-core');
-    const chromium = await import('@sparticuz/chromium');
-    
     // 启动Puppeteer
-    browser = await puppeteer.default.launch({
-      args: chromium.default.args,
-      defaultViewport: chromium.default.defaultViewport,
-      executablePath: await chromium.default.executablePath(),
-      headless: chromium.default.headless,
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
       ignoreHTTPSErrors: true,
     });
     
