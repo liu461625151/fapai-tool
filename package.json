@@ -8,9 +8,9 @@
     "start": "node local-server.js"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^119.0.0",
+    "chrome-aws-lambda": "^10.1.0",
     "express": "^5.2.1",
-    "puppeteer-core": "^18.2.1"
+    "puppeteer-core": "^10.4.0"
   },
   "engines": {
     "node": ">=14.0.0"

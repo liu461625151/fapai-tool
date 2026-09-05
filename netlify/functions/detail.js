@@ -7,7 +7,7 @@
  */
 
 const puppeteer = require('puppeteer-core');
-const chromium = require('@sparticuz/chromium');
+const chromium = require('chrome-aws-lambda');
 
 // 从HTML中提取看样时间
 function extractSampleTime(html) {
