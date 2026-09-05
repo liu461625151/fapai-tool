@@ -339,10 +339,6 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
   </div>
   <div class="header-right">
     <span class="data-source-badge"><span class="dot"></span>阿里拍卖实时数据</span>
-    <button class="header-btn" onclick="exportCSV()">
-      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      导出CSV
-    </button>
   </div>
 </header>
 
@@ -477,6 +473,10 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
         <button class="btn btn-primary" id="searchBtn" onclick="fetchData()">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           查询并加载数据
+        </button>
+        <button class="btn btn-outline" onclick="exportCSV()">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出CSV
         </button>
         <button class="btn btn-accent" id="loadMoreBtn" onclick="loadMore()" style="display:none;">
           <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
