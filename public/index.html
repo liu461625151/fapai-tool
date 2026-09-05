@@ -1086,7 +1086,7 @@ function sortBy(field) {
 function showCookieSettings() {
   document.getElementById('cookieInput').value = state.taobaoCookie || '';
   document.getElementById('cookieStatus').textContent = state.taobaoCookie ? '✅ 已配置Cookie' : '⚠️ 尚未配置Cookie';
-  document.getElementById('cookieModal').style.display = 'flex';
+  document.getElementById('cookieModal').classList.add('show');
 }
 
 function saveCookie() {
@@ -1415,7 +1415,11 @@ function goToAuction() {
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove('show');
+  const modal = document.getElementById(id);
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+  }
 }
 
 // ============================================================
