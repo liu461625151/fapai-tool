@@ -414,11 +414,11 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
         <label class="filter-label">拍卖时间范围</label>
         <div class="time-quick" id="timeQuick">
           <button class="time-quick-btn" data-days="3" onclick="setTimeQuick(3)">近3天</button>
-          <button class="time-quick-btn active" data-days="7" onclick="setTimeQuick(7)">近7天</button>
+          <button class="time-quick-btn" data-days="7" onclick="setTimeQuick(7)">近7天</button>
           <button class="time-quick-btn" data-days="15" onclick="setTimeQuick(15)">近15天</button>
           <button class="time-quick-btn" data-days="30" onclick="setTimeQuick(30)">近30天</button>
           <button class="time-quick-btn" data-days="90" onclick="setTimeQuick(90)">近90天</button>
-          <button class="time-quick-btn" data-days="all" onclick="setTimeQuick('all')">全部时间</button>
+          <button class="time-quick-btn active" data-days="all" onclick="setTimeQuick('all')">全部时间</button>
         </div>
         <div class="time-custom">
           <input type="date" id="dateStart" onchange="onCustomDateChange()">
@@ -481,7 +481,7 @@ th.sort-desc .sort-icon span:first-child { opacity: 0.3; }
     <div class="toolbar-left">
       <div class="result-count">符合条件 <strong id="resultCount">0</strong> 套法拍房</div>
       <span class="current-filter-tag" id="currentRegionTag">全部地区</span>
-      <span class="current-filter-tag" id="currentTimeTag">近7天</span>
+      <span class="current-filter-tag" id="currentTimeTag">全部时间</span>
     </div>
   </div>
 
@@ -576,7 +576,7 @@ const state = {
     province: '', city: '', district: '',
     category: '206060601',
     status: 'all',
-    timeMode: 'quick', timeDays: 7,
+    timeMode: 'quick', timeDays: 'all',
     dateStart: '', dateEnd: '',
     keyword: '', priceMin: '', priceMax: '',
     areaMin: '', areaMax: ''
@@ -728,7 +728,7 @@ function onCustomDateChange() {
 function resetFilters() {
   state.filters = {
     province: '', city: '', district: '', category: '206060601',
-    status: 'all', timeMode: 'quick', timeDays: 7,
+    status: 'all', timeMode: 'quick', timeDays: 'all',
     dateStart: '', dateEnd: '', keyword: '',
     priceMin: '', priceMax: '', areaMin: '', areaMax: ''
   };
@@ -785,15 +785,18 @@ async function fetchData() {
     const statusMap = { all: '0,1', active: '0', upcoming: '1' };
     const apiStatus = statusMap[f.status] || '0,1';
     
-    // 首次加载2页API数据（每页10条，共20条），确保第一页能显示20套
+    // 自动加载所有页数据，确保分页准确
     let allItems = [];
     let apiTotal = 0;
-    const pagesToLoad = 2;
+    let page = 1;
+    const maxPages = 50; // 最多加载50页（500条），避免无限循环
     
-    for (let p = 1; p <= pagesToLoad; p++) {
-      document.getElementById('loadStatusText').textContent = `正在从阿里拍卖获取数据... (${p}/${pagesToLoad})`;
+    while (page <= maxPages) {
+      document.getElementById('loadStatusText').textContent = 
+        `正在从阿里拍卖获取数据... 已加载 ${allItems.length} 条`;
+      
       const params = new URLSearchParams({
-        page: p,
+        page: page,
         province: f.province,
         city: f.city,
         district: f.district,
@@ -806,8 +809,10 @@ async function fetchData() {
       
       if (json.success) {
         apiTotal = json.data.total;
+        if (json.data.items.length === 0) break;
         allItems = allItems.concat(json.data.items);
         if (allItems.length >= apiTotal) break;
+        page++;
       } else {
         throw new Error(json.error || '获取数据失败');
       }
@@ -815,15 +820,12 @@ async function fetchData() {
     
     state.apiTotal = apiTotal;
     state.allItems = allItems;
-    state.apiPage = pagesToLoad;
+    state.apiPage = page;
     document.getElementById('apiTotalInfo').textContent = 
-      `阿里拍卖共找到 ${state.apiTotal} 条，已加载 ${state.allItems.length} 条`;
+      `阿里拍卖共找到 ${state.apiTotal} 条，已加载全部 ${state.allItems.length} 条`;
     
-    if (state.allItems.length < state.apiTotal) {
-      document.getElementById('loadMoreBtn').style.display = 'inline-flex';
-    } else {
-      document.getElementById('loadMoreBtn').style.display = 'none';
-    }
+    // 隐藏加载更多按钮（已加载全部）
+    document.getElementById('loadMoreBtn').style.display = 'none';
     
     applyFilters();
     showToast(`成功获取 ${state.allItems.length} 条真实数据`, 'success');
@@ -1083,18 +1085,8 @@ function renderPagination(totalPages) {
 }
 
 function goToPage(page) {
-  const needed = page * state.pageSize;
-  // 如果目标页需要的数据还没加载，自动加载更多
-  if (needed > state.filteredItems.length && state.allItems.length < state.apiTotal) {
-    loadMore().then(() => {
-      applyFilters();
-      state.currentPage = Math.min(page, Math.ceil(state.filteredItems.length / state.pageSize));
-      renderTable();
-    });
-  } else {
-    state.currentPage = page;
-    renderTable();
-  }
+  state.currentPage = page;
+  renderTable();
 }
 function prevPage() { if (state.currentPage > 1) { state.currentPage--; renderTable(); } }
 function nextPage() {
@@ -1102,16 +1094,6 @@ function nextPage() {
   if (state.currentPage < totalPages) {
     state.currentPage++;
     renderTable();
-  } else if (state.allItems.length < state.apiTotal) {
-    // 已经到最后一页，但还有更多数据未加载，自动加载
-    loadMore().then(() => {
-      applyFilters();
-      const newTotalPages = Math.ceil(state.filteredItems.length / state.pageSize);
-      if (state.currentPage < newTotalPages) {
-        state.currentPage++;
-        renderTable();
-      }
-    });
   }
 }
 
